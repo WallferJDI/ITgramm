@@ -1,6 +1,7 @@
 package com.wallferjdi.itgramm.service;
 
 import com.wallferjdi.itgramm.dto.PostDTO;
+import com.wallferjdi.itgramm.entity.ImageModel;
 import com.wallferjdi.itgramm.entity.Post;
 import com.wallferjdi.itgramm.entity.User;
 import com.wallferjdi.itgramm.exception.PostNotFoundException;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PostService {
@@ -28,7 +30,6 @@ public class PostService {
         this.userRepository = userRepository;
         this.imageRepository = imageRepository;
     }
-
     public Post createPost(PostDTO postDTO, Principal principal){
         User user = getUserFromPrincipal(principal);
         Post post = new Post();
@@ -39,25 +40,39 @@ public class PostService {
                 LOG.info("saving post ");
         return postRepository.save(post);
     }
-
     public List<Post> getAllPosts(){
         return postRepository.findAllByOrderByCreatedTimeDesc();
     }
-
     public User getUserFromPrincipal(Principal principal){
         String username = principal.getName();
         return userRepository.findUserByUsername(username).orElseThrow(()-> new UsernameNotFoundException(" User with" +
                 "this username not exist "+ username));
     }
-
-
+    public Post likePost(Long postId, String username){
+        Post post = postRepository.findById(postId).orElseThrow(()->new PostNotFoundException("Post not found"));
+        Optional<String> userLiked = post.getLinkedUsers().stream()
+                .filter(u->u.equals(username)).findAny();
+        if(userLiked.isPresent()){
+            post.setLikes(post.getLikes()-1);
+            post.getLinkedUsers().remove(username);
+        }else {
+            post.setLikes(post.getLikes()+1);
+            post.getLinkedUsers().add(username);
+        }
+        return postRepository.save(post);
+    }
     public List<Post> getAllPostForUser(Principal principal){
         User user = getUserFromPrincipal(principal);
         return postRepository.findAllByUserOrderByCreatedTimeDesc(user);
     }
-
     public Post getPostById(Long postId,Principal principal){
         User user = getUserFromPrincipal(principal);
         return postRepository.findPostByIdAndUser(postId,user).orElseThrow(()->new PostNotFoundException("Post not found"));
+    }
+    public void deletePost(Long postId,Principal principal){
+     Post post = getPostById(postId,principal);
+     Optional<ImageModel> imageModel = imageRepository.findByPostId(postId);
+     postRepository.delete(post);
+     imageModel.ifPresent(imageRepository::delete);
     }
 }
