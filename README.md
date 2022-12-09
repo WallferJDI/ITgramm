@@ -1,8 +1,8 @@
 # ITgramm
 
 ### Technical Stack 
-Spring Boot 2.3.4
-Spring Security
+* Spring Boot 2.3.4
+* Spring Security
 
 
 # About 
